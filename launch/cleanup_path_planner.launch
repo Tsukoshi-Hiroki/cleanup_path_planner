@@ -1,0 +1,14 @@
+<launch>
+  <arg name="use_sim_time" default="true"/>
+  <arg name="namespace" default="cleanup_path_planner"/>
+  <arg name="rviz_conf" default="$(find cleanup_path_planner)/rviz/rviz.rviz"/>
+
+  <param name="use_sim_time" value="true"/>
+
+  <node pkg="cleanup_path_planner" type="cleanup_path_planner_node" name="$(arg namespace)" output="screen"/>
+
+  <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_conf)"/>
+
+  <node pkg="rosbag" type="play" name="rosbag_play" args="$(env HOME)/bagfiles/brushee/hama_in_urinaltoppic.bag --clock" output="screen"/>
+
+</launch>
