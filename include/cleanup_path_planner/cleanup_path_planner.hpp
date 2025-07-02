@@ -2,6 +2,7 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Path.h>
 #include <urinal_map_msgs/EstimatedWall.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -29,12 +30,15 @@ protected:
   ros::Publisher pub_path_sub_;
   ros::Publisher pub_path_;
   ros::Subscriber sub_estimated_wall_;
+  ros::Subscriber sub_pose_;
 
   // メンバ関数
   void estimated_wall_callback(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
+  void pose_callback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
   void create_path(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
 
   // その他のメンバ変数
+  geometry_msgs::Pose pose_;
   urinal_map_msgs::EstimatedWall::ConstPtr estimated_wall_;
   nav_msgs::Path path_;
   nav_msgs::Path path_sub_;

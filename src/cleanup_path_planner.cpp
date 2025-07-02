@@ -4,6 +4,7 @@
 
 CleanupPathPlanner::CleanupPathPlanner() : nh_("~")
 {
+  sub_pose_ = nh_.subscribe("/amcl_pose", 1, &CleanupPathPlanner::pose_callback_, this, ros::TransportHints().reliable().tcpNoDelay());
   sub_estimated_wall_ = nh_.subscribe("/urinal_wall_estimator/estimated_wall", 1, &CleanupPathPlanner::estimated_wall_callback, this);
 
   pub_path_ = nh_.advertise<nav_msgs::Path>("/cleanup_path", 1);
@@ -34,6 +35,11 @@ void CleanupPathPlanner::estimated_wall_callback(const urinal_map_msgs::Estimate
   pub_path_sub_.publish(path_sub_);
 }
 
+void CleanupPathPlanner::pose_callback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+{
+    pose_ = msg->pose.pose;
+    ROS_ERROR_STREAM("pose_ x: " << pose_.position.x << ", y: " << pose_.position.y << ", z: " << pose_.position.z);
+}
 
 void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::ConstPtr &estimated_wall)
 {
