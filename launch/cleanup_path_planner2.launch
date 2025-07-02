@@ -2,14 +2,14 @@
   <arg name="namespace" default="cleanup_path_planner"/>
   <arg name="brushee_reco_path" default="$(env HOME)/ws/src/brushee_recognition_modules"/>
   <arg name="bagfile_path" default="$(env HOME)/bagfiles/brushee"/>
-  <arg name="rviz_conf" default="$(find cleanup_path_planner)/rviz/cleanup_path.rviz"/>
+  <arg name="rviz_conf" default="$(find cleanup_path_planner)/rviz/rviz.rviz"/>
 
-  <include file="$(arg brushee_reco_path)/launch/without_camera.launch"/>
+  <param name="use_sim_time" value="true"/>
 
   <node pkg="cleanup_path_planner" type="cleanup_path_planner_node" name="$(arg namespace)" output="screen"/>
 
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_conf)"/>
 
-  <node pkg="rosbag" type="play" name="rosbag_play" args="$(arg bagfile_path)/sasaki/near_slow_83s.bag --clock -l"/>
+  <node pkg="rosbag" type="play" name="rosbag_play" args="$(arg bagfile_path)/sasaki/hama_in_urinaltoppic.bag --clock -l"/>
 
 </launch>

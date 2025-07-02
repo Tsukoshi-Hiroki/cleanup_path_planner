@@ -26,7 +26,7 @@ protected:
 
   // pub sub
   ros::NodeHandle nh_;
-  ros::Publisher pub_node_point_;
+  ros::Publisher pub_path_sub_;
   ros::Publisher pub_path_;
   ros::Subscriber sub_estimated_wall_;
 
@@ -37,7 +37,10 @@ protected:
   // その他のメンバ変数
   urinal_map_msgs::EstimatedWall::ConstPtr estimated_wall_;
   nav_msgs::Path path_;
+  nav_msgs::Path path_sub_;
   geometry_msgs::PointStamped node_point_;
+
+  float dist_;
 
 
 };
