@@ -34,7 +34,8 @@ protected:
 
   // メンバ関数
   void estimated_wall_callback(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
-  void pose_callback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
+  void pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
+  bool side_judge();
   void create_path(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
 
   // その他のメンバ変数

@@ -4,7 +4,7 @@
 
 CleanupPathPlanner::CleanupPathPlanner() : nh_("~")
 {
-  sub_pose_ = nh_.subscribe("/amcl_pose", 1, &CleanupPathPlanner::pose_callback_, this, ros::TransportHints().reliable().tcpNoDelay());
+  sub_pose_ = nh_.subscribe("/amcl_pose", 1, &CleanupPathPlanner::pose_callback, this, ros::TransportHints().reliable().tcpNoDelay());
   sub_estimated_wall_ = nh_.subscribe("/urinal_wall_estimator/estimated_wall", 1, &CleanupPathPlanner::estimated_wall_callback, this);
 
   pub_path_ = nh_.advertise<nav_msgs::Path>("/cleanup_path", 1);
@@ -32,13 +32,26 @@ void CleanupPathPlanner::estimated_wall_callback(const urinal_map_msgs::Estimate
   estimated_wall_ = msg;
   create_path(estimated_wall_);
   pub_path_.publish(path_);
-  pub_path_sub_.publish(path_sub_);
+  // pub_path_sub_.publish(path_sub_);
 }
 
-void CleanupPathPlanner::pose_callback_(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
+void CleanupPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
 {
     pose_ = msg->pose.pose;
     ROS_ERROR_STREAM("pose_ x: " << pose_.position.x << ", y: " << pose_.position.y << ", z: " << pose_.position.z);
+}
+
+bool CleanupPathPlanner::side_judge()
+{
+  float  y = -1.0 * (pose_.position.x * estimated_wall_->a + estimated_wall_->c) / estimated_wall_->b; // y = -1 * (ax + c) / b
+
+  if(pose_.position.y > y) {
+    ROS_INFO("robot is on the up side of the wall");
+    return true;
+  } else {
+    ROS_INFO("robot is on the down side of the wall");
+    return false;
+  }
 }
 
 void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::ConstPtr &estimated_wall)
@@ -65,6 +78,17 @@ void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::Const
   // pose.header.stamp = ros::Time::now();
   pose.header.stamp = estimated_wall->header.stamp; // 受信したメッセージのタイムスタンプを使用
 
+
+  if(side_judge()) {
+    // ロボットが壁の上側にいる場合
+    dist_x = dist_x; // 法線方向に移動
+    dist_y = dist_y; // 法線方向に移動
+  } else {
+    // ロボットが壁の下側にいる場合
+    dist_x = -dist_x; // 法線方向と逆に移動
+    dist_y = -dist_y; // 法線方向と逆に移動
+  }
+
   for (const auto &point : pcl_cloud.points) {
     pose.pose.position.x = point.x + dist_x; // 法線方向に移動
     pose.pose.position.y = point.y + dist_y; // 法線方向に移動
@@ -76,32 +100,6 @@ void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::Const
     pose.pose.orientation.z = 0.0;
 
     path_.poses.push_back(pose);
-    // …処理続く
-  }
-
-
-  path_sub_.poses.clear();
-  path_sub_.header.frame_id = "map";
-  // path_.header.stamp = ros::Time::now();
-  path_sub_.header.stamp = estimated_wall->header.stamp; // 受信したメッセージのタイムスタンプを使用
-
-  geometry_msgs::PoseStamped pose_sub;
-  pose_sub.header.frame_id = "map";
-  // pose.header.stamp = ros::Time::now();
-  pose_sub.header.stamp = estimated_wall->header.stamp; // 受信したメッセージのタイムスタンプを使用
-
-  for (const auto &point : pcl_cloud.points) {
-    pose_sub.pose.position.x = point.x - dist_x; // 法線方向に移動
-    pose_sub.pose.position.y = point.y - dist_y; // 法線方向に移動
-    pose_sub.pose.position.z = point.z - dist_z; // z方向の移動は考慮しない
-
-    pose_sub.pose.orientation.w = 1.0; // Set orientation to identity
-    pose_sub.pose.orientation.x = 0.0;
-    pose_sub.pose.orientation.y = 0.0;
-    pose_sub.pose.orientation.z = 0.0;
-
-    path_sub_.poses.push_back(pose_sub);
-    // …処理続く
   }
 
 }

@@ -10,6 +10,6 @@
 
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_conf)"/>
 
-  <node pkg="rosbag" type="play" name="rosbag_play" args="$(arg bagfile_path)/sasaki/near_slow_83s.bag --clock -l"/>
+  <node pkg="rosbag" type="play" name="rosbag_play" args="$(arg bagfile_path)/hamamatsu-test_2024-10-29-16-08-57.bag --clock"/>
 
 </launch>
