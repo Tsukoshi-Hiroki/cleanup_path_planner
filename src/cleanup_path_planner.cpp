@@ -2,7 +2,7 @@
 #include "cleanup_path_planner/cleanup_path_planner.hpp"
 
 
-CleanupPathPlanner::CleanupPathPlanner() : nh_("~")
+CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(tf_buffer_)
 {
   sub_pose_ = nh_.subscribe("/amcl_pose", 1, &CleanupPathPlanner::pose_callback, this, ros::TransportHints().reliable().tcpNoDelay());
   sub_estimated_wall_ = nh_.subscribe("/urinal_wall_estimator/estimated_wall", 1, &CleanupPathPlanner::estimated_wall_callback, this);
@@ -60,9 +60,8 @@ void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::Const
   pcl::fromROSMsg(estimated_wall->wall_points, pcl_cloud);  // ←ここで変換
 
   path_.poses.clear();
-  path_.header.frame_id = "map";
-  // path_.header.stamp = ros::Time::now();
-  path_.header.stamp = estimated_wall->header.stamp; // 受信したメッセージのタイムスタンプを使用
+  path_.header.frame_id = "base_link"; // base_link座標系に変更
+  path_.header.stamp = estimated_wall->header.stamp;
 
   // 法線方向の算出
   float tan_theta = estimated_wall->b / estimated_wall->a; // tan(theta) = b/a
@@ -75,9 +74,7 @@ void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::Const
 
   geometry_msgs::PoseStamped pose;
   pose.header.frame_id = "map";
-  // pose.header.stamp = ros::Time::now();
-  pose.header.stamp = estimated_wall->header.stamp; // 受信したメッセージのタイムスタンプを使用
-
+  pose.header.stamp = estimated_wall->header.stamp;
 
   if(side_judge()) {
     // ロボットが壁の上側にいる場合
@@ -99,7 +96,15 @@ void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::Const
     pose.pose.orientation.y = 0.0;
     pose.pose.orientation.z = 0.0;
 
-    path_.poses.push_back(pose);
+    // map→base_link座標系へ変換(tf2)
+    geometry_msgs::PoseStamped pose_base_link;
+    try{
+      pose_base_link = tf_buffer_.transform(pose, "base_link", ros::Duration(0.1));
+      path_.poses.push_back(pose_base_link);
+    }catch (tf2::TransformException &ex)
+    {
+      ROS_WARN("tf2 Transform failed: %s", ex.what());
+      continue;
+    }
   }
-
 }

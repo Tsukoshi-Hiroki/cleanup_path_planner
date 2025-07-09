@@ -8,6 +8,9 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 class CleanupPathPlanner
 {
@@ -31,6 +34,9 @@ protected:
   ros::Publisher pub_path_;
   ros::Subscriber sub_estimated_wall_;
   ros::Subscriber sub_pose_;
+
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
 
   // メンバ関数
   void estimated_wall_callback(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
