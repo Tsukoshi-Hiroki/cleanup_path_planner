@@ -6,7 +6,10 @@
 
   <include file="$(arg brushee_reco_path)/launch/without_camera.launch"/>
 
-  <node pkg="cleanup_path_planner" type="cleanup_path_planner_node" name="$(arg namespace)" output="screen"/>
+  <node pkg="cleanup_path_planner" type="cleanup_path_planner_node" name="$(arg namespace)" output="screen">
+    <param name="dist" value="2"/>
+    <param name="hz" value="10"/>
+  </node>
 
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_conf)"/>
 

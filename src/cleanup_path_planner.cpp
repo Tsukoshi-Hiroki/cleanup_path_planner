@@ -12,8 +12,8 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   // pub_node_point_ = nh_.advertise<geometry_msgs::PointStamped>("/cleanup_node_point", 1);
 
   // パラメータの読み込み
-  nh_.param("dist", dist_, 0.5f); // デフォルト値を0.5に設定
-  nh_.param("hz", hz_, 10); // デフォルト値を10に設定
+  nh_.getParam("dist", dist_); // デフォルト値を0.5に設定
+  nh_.getParam("hz", hz_); // デフォルト値を10に設定
 }
 
 void CleanupPathPlanner::process()
