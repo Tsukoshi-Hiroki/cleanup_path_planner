@@ -35,10 +35,8 @@ void CleanupPathPlanner::process()
   while (ros::ok())
   {
     judge_path_method();
-    pub_path_.publish(path_);
+    /* pub_path_.publish(path_); */
     pub_start_point_.publish(path_start_point_);
-    ROS_ERROR("Path is published");
-
     ros::spinOnce();
     loop_rate.sleep();
   }
@@ -64,12 +62,10 @@ void CleanupPathPlanner::judge_path_method()
   {
     // ここにpathの生成方法を決定するロジックを実装
     create_approach_path();
-    ROS_ERROR("Path generation method selected.");
   }
   else if(0)
   {
     create_path(estimated_wall_);
-    ROS_ERROR("No valid path generation method selected.");
   }
 }
 
@@ -84,6 +80,34 @@ float CleanupPathPlanner::calc_inclination()
   float inclination = dy / dx; // 傾きの計算
   ROS_INFO("Calculated inclination: %f", inclination);
   return inclination;
+}
+
+void CleanupPathPlanner::path_tf_transformer()
+{
+  // map座標系からbase_link座標系に変換
+  // 変換後のPathメッセージを作成
+  nav_msgs::Path transformed_path;
+  transformed_path.header.frame_id = "base_link";
+  transformed_path.header.stamp = path_.header.stamp;
+
+  // tf2を使って座標変換を取得
+  geometry_msgs::TransformStamped transform_stamped;
+  try {
+    transform_stamped = tf_buffer_.lookupTransform("base_link", path_.header.frame_id, path_.header.stamp, ros::Duration(0.1));
+  } catch (tf2::TransformException &ex) {
+    ROS_WARN("tf2 Transform failed: %s", ex.what());
+    return;
+  }
+
+  // 各Poseを変換
+  for (const auto &pose : path_.poses) {
+    geometry_msgs::PoseStamped transformed_pose;
+    tf2::doTransform(pose, transformed_pose, transform_stamped);
+    transformed_path.poses.push_back(transformed_pose);
+  }
+  
+  // 変換後のPathをパブリッシュ
+  pub_path_.publish(transformed_path);
 }
 
 void CleanupPathPlanner::create_approach_path()
@@ -115,9 +139,11 @@ void CleanupPathPlanner::create_approach_path()
 
       path_.poses.push_back(pose);
     }
+    path_tf_transformer();
+
   } else {
     // ロボットが左側にいる場合
-    for(int i=1; (pose_.pose.position.x - dx_*i) < path_start_point_.pose.position.x; ++i)
+    for(int i=1; (pose_.pose.position.x - dx_*i) > path_start_point_.pose.position.x; ++i)
     {
       ROS_INFO("loop iteration: %d", i);
       geometry_msgs::PoseStamped pose;
@@ -132,7 +158,9 @@ void CleanupPathPlanner::create_approach_path()
       pose.pose.orientation.z = 0.0;
 
       path_.poses.push_back(pose);
-     }
+    }
+    path_tf_transformer();
+
   }
 }
 

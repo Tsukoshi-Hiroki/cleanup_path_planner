@@ -10,8 +10,8 @@
     <param name="dist" value="2"/>
     <param name="hz" value="10"/>
     <param name="dx" value="0.5"/>
-    <param name="tmp_start_point_x" value="10"/>
-    <param name="tmp_start_point_y" value="10"/>
+    <param name="tmp_start_point_x" value="-10"/>
+    <param name="tmp_start_point_y" value="-10"/>
   </node>
 
   <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_conf)"/>
