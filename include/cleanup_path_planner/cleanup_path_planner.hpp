@@ -42,7 +42,7 @@ protected:
   void estimated_wall_callback(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
   void pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
   bool side_judge();
-  void create_path(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
+  void create_path();
   void judge_path_method();
   void create_approach_path();
   float calc_inclination();
@@ -51,10 +51,11 @@ protected:
   // その他のメンバ変数
   geometry_msgs::PoseStamped path_start_point_;
   geometry_msgs::PoseStamped pose_;
-  urinal_map_msgs::EstimatedWall::ConstPtr estimated_wall_;
+  urinal_map_msgs::EstimatedWall estimated_wall_;
   nav_msgs::Path path_;
   nav_msgs::Path path_sub_;
 
+  int path_method_;
   float dist_;
   float dx_;
   float tmp_start_point_x_;

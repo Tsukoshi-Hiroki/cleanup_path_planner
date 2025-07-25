@@ -12,6 +12,7 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   // pub_node_point_ = nh_.advertise<geometry_msgs::PointStamped>("/cleanup_node_point", 1);
 
   // パラメータの読み込み
+  nh_.getParam("path_method", path_method_);
   nh_.getParam("dist", dist_);
   nh_.getParam("hz", hz_);
   nh_.getParam("dx", dx_);
@@ -34,10 +35,10 @@ void CleanupPathPlanner::process()
   ros::Rate loop_rate(hz_);
   while (ros::ok())
   {
-    judge_path_method();
     /* pub_path_.publish(path_); */
-    pub_start_point_.publish(path_start_point_);
     ros::spinOnce();
+    pub_start_point_.publish(path_start_point_);
+    judge_path_method();
     loop_rate.sleep();
   }
 
@@ -45,7 +46,7 @@ void CleanupPathPlanner::process()
 
 void CleanupPathPlanner::estimated_wall_callback(const urinal_map_msgs::EstimatedWall::ConstPtr &msg)
 {
-  estimated_wall_ = msg;
+  estimated_wall_ = *msg;
 }
 
 void CleanupPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
@@ -58,14 +59,15 @@ void CleanupPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceSt
 void CleanupPathPlanner::judge_path_method()
 {
   // path の生成方法を決定するロジックをここに実装
-  if(1)
+  if(path_method_ == 0)
   {
-    // ここにpathの生成方法を決定するロジックを実装
+    // 壁に接近するアプローチパスを生成
     create_approach_path();
   }
-  else if(0)
+  else if(path_method_ == 1)
   {
-    create_path(estimated_wall_);
+    // 壁際のパスを生成
+    create_path();
   }
 }
 
@@ -139,6 +141,8 @@ void CleanupPathPlanner::create_approach_path()
 
       path_.poses.push_back(pose);
     }
+
+    // Pathの座標系をbase_linkに変換してパブリッシュ
     path_tf_transformer();
 
   } else {
@@ -159,6 +163,8 @@ void CleanupPathPlanner::create_approach_path()
 
       path_.poses.push_back(pose);
     }
+
+    // Pathの座標系をbase_linkに変換してパブリッシュ
     path_tf_transformer();
 
   }
@@ -166,7 +172,7 @@ void CleanupPathPlanner::create_approach_path()
 
 bool CleanupPathPlanner::side_judge()
 {
-  float  y = -1.0 * (pose_.pose.position.x * estimated_wall_->a + estimated_wall_->c) / estimated_wall_->b; // y = -1 * (ax + c) / b
+  float  y = -1.0 * (pose_.pose.position.x * estimated_wall_.a + estimated_wall_.c) / estimated_wall_.b; // y = -1 * (ax + c) / b
 
   if(pose_.pose.position.y > y) {
     ROS_INFO("robot is on the up side of the wall");
@@ -177,17 +183,20 @@ bool CleanupPathPlanner::side_judge()
   }
 }
 
-void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::ConstPtr &estimated_wall)
+void CleanupPathPlanner::create_path()
 {
   pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
-  pcl::fromROSMsg(estimated_wall->wall_points, pcl_cloud);  // ←ここで変換
+  ROS_INFO("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+  pcl::fromROSMsg(estimated_wall_.wall_points, pcl_cloud);  // ←ここで変換
+
+  ROS_INFO("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
   path_.poses.clear();
-  path_.header.frame_id = "base_link"; // base_link座標系に変更
-  path_.header.stamp = estimated_wall->header.stamp;
+  path_.header.frame_id = "map"; // base_link座標系に変更
+  path_.header.stamp = estimated_wall_.header.stamp;
 
   // 法線方向の算出
-  float tan_theta = estimated_wall->b / estimated_wall->a; // tan(theta) = b/a
+  float tan_theta = estimated_wall_.b / estimated_wall_.a; // tan(theta) = b/a
   float theta = atan(tan_theta); // θ = arctan(b/a)
 
   // Pathの移動距離の計算
@@ -195,9 +204,6 @@ void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::Const
   float dist_y = dist_ * sin(theta);
   float dist_z = 0.0; // z方向の移動は考慮しない
 
-  geometry_msgs::PoseStamped pose;
-  pose.header.frame_id = "map";
-  pose.header.stamp = estimated_wall->header.stamp;
 
   if(side_judge()) {
     // ロボットが壁の上側にいる場合
@@ -210,24 +216,20 @@ void CleanupPathPlanner::create_path(const urinal_map_msgs::EstimatedWall::Const
   }
 
   for (const auto &point : pcl_cloud.points) {
+    geometry_msgs::PoseStamped pose;
+    pose.header.frame_id = "map";
+    pose.header.stamp = estimated_wall_.header.stamp;
     pose.pose.position.x = point.x + dist_x; // 法線方向に移動
     pose.pose.position.y = point.y + dist_y; // 法線方向に移動
     pose.pose.position.z = point.z + dist_z; // z方向の移動は考慮しない
-
     pose.pose.orientation.w = 1.0; // Set orientation to identity
     pose.pose.orientation.x = 0.0;
     pose.pose.orientation.y = 0.0;
     pose.pose.orientation.z = 0.0;
 
-    // map→base_link座標系へ変換(tf2)
-    geometry_msgs::PoseStamped pose_base_link;
-    try{
-      pose_base_link = tf_buffer_.transform(pose, "base_link", ros::Duration(0.1));
-      path_.poses.push_back(pose_base_link);
-    }catch (tf2::TransformException &ex)
-    {
-      ROS_WARN("tf2 Transform failed: %s", ex.what());
-      continue;
-    }
+    path_.poses.push_back(pose);
   }
+
+  // Pathの座標系をbase_linkに変換してパブリッシュ
+  path_tf_transformer();
 }
