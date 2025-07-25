@@ -30,8 +30,8 @@ protected:
 
   // pub sub
   ros::NodeHandle nh_;
-  ros::Publisher pub_path_sub_;
   ros::Publisher pub_path_;
+  ros::Publisher pub_start_point_;
   ros::Subscriber sub_estimated_wall_;
   ros::Subscriber sub_pose_;
 
@@ -43,15 +43,21 @@ protected:
   void pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg);
   bool side_judge();
   void create_path(const urinal_map_msgs::EstimatedWall::ConstPtr &msg);
+  void judge_path_method();
+  void create_approach_path();
+  float calc_inclination();
 
   // その他のメンバ変数
-  geometry_msgs::Pose pose_;
+  geometry_msgs::PoseStamped path_start_point_;
+  geometry_msgs::PoseStamped pose_;
   urinal_map_msgs::EstimatedWall::ConstPtr estimated_wall_;
   nav_msgs::Path path_;
   nav_msgs::Path path_sub_;
-  geometry_msgs::PointStamped node_point_;
 
   float dist_;
+  float dx_;
+  float tmp_start_point_x_;
+  float tmp_start_point_y_;
 
 
 };

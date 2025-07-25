@@ -7,13 +7,26 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   sub_pose_ = nh_.subscribe("/amcl_pose", 1, &CleanupPathPlanner::pose_callback, this, ros::TransportHints().reliable().tcpNoDelay());
   sub_estimated_wall_ = nh_.subscribe("/urinal_wall_estimator/estimated_wall", 1, &CleanupPathPlanner::estimated_wall_callback, this);
 
-  pub_path_ = nh_.advertise<nav_msgs::Path>("/cleanup_path", 1);
-  pub_path_sub_ = nh_.advertise<nav_msgs::Path>("/cleanup_path_sub", 1);
+  pub_path_ = nh_.advertise<nav_msgs::Path>("/wall_side_path", 1);
+  pub_start_point_ = nh_.advertise<geometry_msgs::PoseStamped>("/wall_side_path_start_point", 1);
   // pub_node_point_ = nh_.advertise<geometry_msgs::PointStamped>("/cleanup_node_point", 1);
 
   // パラメータの読み込み
-  nh_.getParam("dist", dist_); // デフォルト値を0.5に設定
-  nh_.getParam("hz", hz_); // デフォルト値を10に設定
+  nh_.getParam("dist", dist_);
+  nh_.getParam("hz", hz_);
+  nh_.getParam("dx", dx_);
+  nh_.getParam("tmp_start_point_x", tmp_start_point_x_);
+  nh_.getParam("tmp_start_point_y", tmp_start_point_y_);
+
+  path_start_point_.header.frame_id = "map";
+  path_start_point_.header.stamp = ros::Time::now();
+  path_start_point_.pose.position.x = tmp_start_point_x_;
+  path_start_point_.pose.position.y = tmp_start_point_y_;
+  path_start_point_.pose.position.z = 0.0;
+  path_start_point_.pose.orientation.x = 0.0;
+  path_start_point_.pose.orientation.y = 0.0;
+  path_start_point_.pose.orientation.z = 0.0;
+  path_start_point_.pose.orientation.w = 0.0;
 }
 
 void CleanupPathPlanner::process()
@@ -21,6 +34,11 @@ void CleanupPathPlanner::process()
   ros::Rate loop_rate(hz_);
   while (ros::ok())
   {
+    judge_path_method();
+    pub_path_.publish(path_);
+    pub_start_point_.publish(path_start_point_);
+    ROS_ERROR("Path is published");
+
     ros::spinOnce();
     loop_rate.sleep();
   }
@@ -30,22 +48,99 @@ void CleanupPathPlanner::process()
 void CleanupPathPlanner::estimated_wall_callback(const urinal_map_msgs::EstimatedWall::ConstPtr &msg)
 {
   estimated_wall_ = msg;
-  create_path(estimated_wall_);
-  pub_path_.publish(path_);
-  // pub_path_sub_.publish(path_sub_);
 }
 
 void CleanupPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& msg)
 {
-    pose_ = msg->pose.pose;
-    ROS_ERROR_STREAM("pose_ x: " << pose_.position.x << ", y: " << pose_.position.y << ", z: " << pose_.position.z);
+  pose_.header = msg->header;
+  pose_.pose = msg->pose.pose;
+  ROS_INFO_STREAM("pose_ x: " << pose_.pose.position.x << ", y: " << pose_.pose.position.y << ", z: " << pose_.pose.position.z);
+}
+
+void CleanupPathPlanner::judge_path_method()
+{
+  // path の生成方法を決定するロジックをここに実装
+  if(1)
+  {
+    // ここにpathの生成方法を決定するロジックを実装
+    create_approach_path();
+    ROS_ERROR("Path generation method selected.");
+  }
+  else if(0)
+  {
+    create_path(estimated_wall_);
+    ROS_ERROR("No valid path generation method selected.");
+  }
+}
+
+float CleanupPathPlanner::calc_inclination()
+{
+  // 自己位置から path_start_point_ までの傾きを計算
+  float dx = path_start_point_.pose.position.x - pose_.pose.position.x;
+  float dy = path_start_point_.pose.position.y - pose_.pose.position.y;
+  if (dx == 0.0) {
+    dx = 0.0001; // ゼロ除算を避ける
+  }
+  float inclination = dy / dx; // 傾きの計算
+  ROS_INFO("Calculated inclination: %f", inclination);
+  return inclination;
+}
+
+void CleanupPathPlanner::create_approach_path()
+{
+  path_.poses.clear();
+  path_.header.frame_id = "map"; // base_link座標系に変更
+  path_.header.stamp = pose_.header.stamp;
+
+  // 自己位置を初期値に設定
+  path_.poses.push_back(pose_);
+
+  float inclination = calc_inclination();
+
+  if(pose_.pose.position.x < path_start_point_.pose.position.x) {
+    // ロボットが左側にいる場合
+    for(int i=1; (pose_.pose.position.x + dx_*i) < path_start_point_.pose.position.x; ++i)
+    {
+      ROS_INFO("loop iteration: %d", i);
+      geometry_msgs::PoseStamped pose;
+      pose.header.frame_id = "map";
+      pose.header.stamp = ros::Time::now();
+      pose.pose.position.x = path_.poses.back().pose.position.x + dx_;
+      pose.pose.position.y = path_.poses.back().pose.position.y + inclination * dx_; // 傾きに基づいてy座標を調整
+      pose.pose.position.z = 0.0;
+      pose.pose.orientation.w = 1.0; // Set orientation to identity
+      pose.pose.orientation.x = dx_;
+      pose.pose.orientation.y = inclination * dx_;
+      pose.pose.orientation.z = 0.0;
+
+      path_.poses.push_back(pose);
+    }
+  } else {
+    // ロボットが左側にいる場合
+    for(int i=1; (pose_.pose.position.x - dx_*i) < path_start_point_.pose.position.x; ++i)
+    {
+      ROS_INFO("loop iteration: %d", i);
+      geometry_msgs::PoseStamped pose;
+      pose.header.frame_id = "map";
+      pose.header.stamp = ros::Time::now();
+      pose.pose.position.x = path_.poses.back().pose.position.x - dx_;
+      pose.pose.position.y = path_.poses.back().pose.position.y - inclination * dx_; // 傾きに基づいてy座標を調整
+      pose.pose.position.z = 0.0;
+      pose.pose.orientation.w = 1.0; // Set orientation to identity
+      pose.pose.orientation.x = dx_;
+      pose.pose.orientation.y = inclination * dx_;
+      pose.pose.orientation.z = 0.0;
+
+      path_.poses.push_back(pose);
+     }
+  }
 }
 
 bool CleanupPathPlanner::side_judge()
 {
-  float  y = -1.0 * (pose_.position.x * estimated_wall_->a + estimated_wall_->c) / estimated_wall_->b; // y = -1 * (ax + c) / b
+  float  y = -1.0 * (pose_.pose.position.x * estimated_wall_->a + estimated_wall_->c) / estimated_wall_->b; // y = -1 * (ax + c) / b
 
-  if(pose_.position.y > y) {
+  if(pose_.pose.position.y > y) {
     ROS_INFO("robot is on the up side of the wall");
     return true;
   } else {
