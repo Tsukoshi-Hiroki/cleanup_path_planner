@@ -7,6 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
+        - /PoseWithCovariance1
         - /Axes1
         - /Pose1
       Splitter Ratio: 0.5
@@ -28,7 +29,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: PointCloud2
+    SyncSource: ""
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -113,7 +114,7 @@ Visualization Manager:
       Head Radius: 0.10000000149011612
       Name: PoseWithCovariance
       Queue Size: 10
-      Shaft Length: 1
+      Shaft Length: 0.30000001192092896
       Shaft Radius: 0.05000000074505806
       Shape: Arrow
       Topic: /amcl_pose
@@ -185,13 +186,13 @@ Visualization Manager:
       Value: false
     - Alpha: 1
       Class: rviz/Axes
-      Enabled: true
+      Enabled: false
       Length: 0.5
       Name: Axes
       Radius: 0.10000000149011612
       Reference Frame: <Fixed Frame>
       Show Trail: false
-      Value: true
+      Value: false
     - Alpha: 1
       Axes Length: 0.5
       Axes Radius: 0.10000000149011612
@@ -236,7 +237,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 28.691640853881836
+      Distance: 7.012750625610352
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -244,17 +245,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -1.1986427307128906
-        Y: 0.2013552486896515
-        Z: 0.13979364931583405
+        X: 1.8362754583358765
+        Y: -1.075164794921875
+        Z: 0.13873444497585297
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5247963666915894
+      Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 3.1604034900665283
+      Yaw: 2.3304014205932617
     Saved: ~
 Window Geometry:
   Displays:

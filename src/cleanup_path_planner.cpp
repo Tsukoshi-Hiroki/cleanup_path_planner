@@ -27,7 +27,7 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   path_start_point_.pose.orientation.x = 0.0;
   path_start_point_.pose.orientation.y = 0.0;
   path_start_point_.pose.orientation.z = 0.0;
-  path_start_point_.pose.orientation.w = 0.0;
+  path_start_point_.pose.orientation.w = 1.0;
 }
 
 void CleanupPathPlanner::process()
@@ -141,6 +141,8 @@ void CleanupPathPlanner::create_approach_path()
 
       path_.poses.push_back(pose);
     }
+    // path の最後の座標をpath_start_point_に設定
+    path_.poses.push_back(path_start_point_);
 
     // Pathの座標系をbase_linkに変換してパブリッシュ
     path_tf_transformer();
@@ -163,6 +165,8 @@ void CleanupPathPlanner::create_approach_path()
 
       path_.poses.push_back(pose);
     }
+    // path の最後の座標をpath_start_point_に設定
+    path_.poses.push_back(path_start_point_);
 
     // Pathの座標系をbase_linkに変換してパブリッシュ
     path_tf_transformer();

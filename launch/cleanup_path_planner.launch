@@ -2,16 +2,19 @@
   <arg name="namespace" default="cleanup_path_planner"/>
   <arg name="brushee_reco_path" default="$(env HOME)/ws/src/brushee_recognition_modules"/>
   <arg name="bagfile_path" default="$(env HOME)/bagfiles/brushee"/>
+  <!-- 佐々木さんの環境の rviz -->
+  <!-- <arg name="rviz_conf" default="/home/user/ws/src/brushee_recognition_modules/config/rviz/urinal_mapping.rviz"/> -->
+  <!-- 自分の環境の rviz -->
   <arg name="rviz_conf" default="$(find cleanup_path_planner)/rviz/cleanup_path.rviz"/>
 
-  <include file="$(arg brushee_reco_path)/launch/without_camera.launch"/>
+  <include file="$(arg brushee_reco_path)/launch/libra_without_camera.launch"/>
 
   <node pkg="cleanup_path_planner" type="cleanup_path_planner_node" name="$(arg namespace)" output="screen">
-    <param name="path_method" value="1"/>
+    <param name="path_method" value="0"/>
     <param name="hz" value="10"/>
-    <param name="tmp_start_point_x" value="-10"/>
-    <param name="tmp_start_point_y" value="-10"/>
-    <param name="dx" value="0.5"/>
+    <param name="tmp_start_point_x" value="2"/>
+    <param name="tmp_start_point_y" value="1"/>
+    <param name="dx" value="0.05"/>
     <param name="dist" value="2"/>
   </node>
 
