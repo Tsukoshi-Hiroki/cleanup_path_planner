@@ -11,6 +11,9 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   pub_start_point_ = nh_.advertise<geometry_msgs::PoseStamped>("/wall_side_path_start_point", 1);
   // pub_node_point_ = nh_.advertise<geometry_msgs::PointStamped>("/cleanup_node_point", 1);
 
+  // service server
+  approach_path_server_ = nh_.advertiseService("/publish_approach_path", &CleanupPathPlanner::approach_path_check, this);
+
   // パラメータの読み込み
   nh_.getParam("path_method", path_method_);
   nh_.getParam("dist", dist_);
@@ -19,6 +22,7 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   nh_.getParam("tmp_start_point_x", tmp_start_point_x_);
   nh_.getParam("tmp_start_point_y", tmp_start_point_y_);
 
+  // 初期のpath_start_point_の設定
   path_start_point_.header.frame_id = "map";
   path_start_point_.header.stamp = ros::Time::now();
   path_start_point_.pose.position.x = tmp_start_point_x_;
@@ -54,6 +58,26 @@ void CleanupPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceSt
   pose_.header = msg->header;
   pose_.pose = msg->pose.pose;
   ROS_INFO_STREAM("pose_ x: " << pose_.pose.position.x << ", y: " << pose_.pose.position.y << ", z: " << pose_.pose.position.z);
+}
+
+
+bool CleanupPathPlanner::approach_path_check(urinal_cleaning_msgs::PublishApproachPath::Request& req, urinal_cleaning_msgs::PublishApproachPath::Response& res)
+{
+  // アプローチパスの生成を行う
+  ROS_INFO("Approach path check called");
+  path_method_ = 0; // アプローチパスを生成する方法を指定
+  target_offset_x_ = req.target_offset_x;
+  target_offset_y_ = req.target_offset_y;
+  
+  path_start_point_.pose.position.x = target_offset_x_;
+  path_start_point_.pose.position.y = target_offset_y_;
+  
+  printf("Target offset: x = %f, y = %f\n", target_offset_x_, target_offset_y_);
+
+  // レスポンスの設定
+  res.success = true;
+  
+  return true;
 }
 
 void CleanupPathPlanner::judge_path_method()

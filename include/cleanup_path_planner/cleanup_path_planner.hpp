@@ -5,6 +5,8 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Path.h>
 #include <urinal_map_msgs/EstimatedWall.h>
+#include <urinal_cleaning_msgs/PublishApproachPath.h>
+#include <urinal_cleaning_msgs/StopPublishingPath.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -28,12 +30,13 @@ public:
 
 protected:
 
-  // pub sub
+  // ROS Interface
   ros::NodeHandle nh_;
   ros::Publisher pub_path_;
   ros::Publisher pub_start_point_;
   ros::Subscriber sub_estimated_wall_;
   ros::Subscriber sub_pose_;
+  ros::ServiceServer approach_path_server_;
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
@@ -47,6 +50,7 @@ protected:
   void create_approach_path();
   float calc_inclination();
   void path_tf_transformer();
+  bool approach_path_check(urinal_cleaning_msgs::PublishApproachPath::Request& req, urinal_cleaning_msgs::PublishApproachPath::Response& res);
 
   // その他のメンバ変数
   geometry_msgs::PoseStamped path_start_point_;
@@ -60,6 +64,8 @@ protected:
   float dx_;
   float tmp_start_point_x_;
   float tmp_start_point_y_;
+  float target_offset_x_;
+  float target_offset_y_;
 
 
 };

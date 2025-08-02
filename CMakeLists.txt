@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2_geometry_msgs
   tf2_ros
   urinal_map_msgs
+  urinal_cleaning_msgs
 )
 
 find_package(PCL REQUIRED)

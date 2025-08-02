@@ -59,6 +59,7 @@
   <build_depend>tf2_geometry_msgs</build_depend>
   <build_depend>tf2_ros</build_depend>
   <build_depend> urinal_map_msgs</build_depend>
+  <build_depend> urinal_cleaning_msgs</build_depend>
 
 
   <build_export_depend>geometry_msgs</build_export_depend>
