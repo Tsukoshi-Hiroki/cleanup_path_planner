@@ -7,7 +7,8 @@ Panels:
         - /Global Options1
         - /Status1
         - /Grid1
-        - /PoseWithCovariance1
+        - /PointCloud21
+        - /PointCloud21/Status1
         - /Axes1
         - /Pose1
       Splitter Ratio: 0.5
@@ -237,7 +238,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 7.012750625610352
+      Distance: 15.50295639038086
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
