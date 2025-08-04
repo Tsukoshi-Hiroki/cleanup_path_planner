@@ -1,7 +1,6 @@
 // Copyright 2025 amsl
 #include "cleanup_path_planner/cleanup_path_planner.hpp"
 
-
 CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(tf_buffer_)
 {
   // subscriber
@@ -34,7 +33,6 @@ void CleanupPathPlanner::process()
   ros::Rate loop_rate(hz_);
   while (ros::ok())
   {
-    /* pub_path_.publish(path_); */
     ros::spinOnce();
     judge_path_method();
     loop_rate.sleep();
@@ -152,6 +150,23 @@ void CleanupPathPlanner::calc_start_point()
     ROS_INFO("Successfully called service get_urinal_proximity");
     urinal_cleaning_msgs::UrinalProximity urinal_proximity = get_urinal_prox_srv.response.urinal_proximity;
 
+    if(urinal_proximity.urinal_info.position.pose.position.x > pose_.pose.position.x) {
+      if(urinal_proximity.urinal_info.position.pose.position.y > pose_.pose.position.y){
+        target_offset_x_ *= -1.0; // x座標のオフセットを反転
+        target_offset_y_ *= -1.0; // y座標のオフセットを反転
+      } else {
+        target_offset_x_ *= -1.0; // x座標のオフセットを反転
+        target_offset_y_ *= 1.0; // y座標のオフセットはそのまま
+        }
+    } else {
+      if(urinal_proximity.urinal_info.position.pose.position.y > pose_.pose.position.y) {
+        target_offset_x_ *= 1.0; // x座標のオフセットはそのまま
+        target_offset_y_ *= -1.0; // y座標のオフセットは反転
+      } else {
+        target_offset_x_ *= 1.0; // x座標のオフセットはそのまま
+        target_offset_y_ *= 1.0; // y座標のオフセットはそのまま
+      }
+    }
     // 取得した urinal_proximity から path_start_point_ の座標を設定
     path_start_point_.header.frame_id = "map";
     path_start_point_.header.stamp = ros::Time::now();
@@ -163,6 +178,9 @@ void CleanupPathPlanner::calc_start_point()
     path_start_point_.pose.orientation.z = 0.0;
     path_start_point_.pose.orientation.w = 1.0; // 単位クォータニオン
     
+    ROS_INFO_STREAM("Proximity data received: x = " << urinal_proximity.urinal_info.position.pose.position.x 
+                    << ", y = " << urinal_proximity.urinal_info.position.pose.position.y);
+    ROS_INFO_STREAM("Calculated target offset: x = " << target_offset_x_ << ", y = " << target_offset_y_);
     ROS_INFO_STREAM("Start point from urinal map: x = " << path_start_point_.pose.position.x 
                     << ", y = " << path_start_point_.pose.position.y);
 
@@ -226,7 +244,6 @@ void CleanupPathPlanner::create_approach_path()
     // ロボットが左側にいる場合
     for(int i=1; (pose_.pose.position.x + dx_*i) < path_start_point_.pose.position.x; ++i)
     {
-      ROS_INFO("loop iteration: %d", i);
       geometry_msgs::PoseStamped pose;
       pose.header.frame_id = "map";
       pose.header.stamp = ros::Time::now();
@@ -250,7 +267,6 @@ void CleanupPathPlanner::create_approach_path()
     // ロボットが左側にいる場合
     for(int i=1; (pose_.pose.position.x - dx_*i) > path_start_point_.pose.position.x; ++i)
     {
-      ROS_INFO("loop iteration: %d", i);
       geometry_msgs::PoseStamped pose;
       pose.header.frame_id = "map";
       pose.header.stamp = ros::Time::now();
