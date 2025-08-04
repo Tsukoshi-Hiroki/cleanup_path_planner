@@ -10,6 +10,7 @@
 #include <urinal_cleaning_msgs/PublishUrinalCleaningPath.h>
 #include <urinal_cleaning_msgs/PublishReturnPath.h>
 #include <urinal_cleaning_msgs/StopPublishingPath.h>
+#include <urinal_cleaning_msgs/GetUrinalProximity.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -42,7 +43,7 @@ protected:
   ros::ServiceServer approach_path_svr_;
   ros::ServiceServer urinal_cleaning_path_svr_;
   ros::ServiceServer stop_path_svr_;
-  ros::ServiceClient get_urinal_map_clt_;
+  ros::ServiceClient get_urinal_prox_clt_;
 
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
@@ -56,6 +57,7 @@ protected:
   void create_approach_path();
   float calc_inclination();
   void path_tf_transformer();
+  void calc_start_point();
   bool approach_path_check(urinal_cleaning_msgs::PublishApproachPath::Request& req, urinal_cleaning_msgs::PublishApproachPath::Response& res);
   bool urinal_cleaning_path_check(urinal_cleaning_msgs::PublishUrinalCleaningPath::Request& req, urinal_cleaning_msgs::PublishUrinalCleaningPath::Response& res);
   bool stop_path_check(urinal_cleaning_msgs::StopPublishingPath::Request& req, urinal_cleaning_msgs::StopPublishingPath::Response& res);
@@ -65,8 +67,8 @@ protected:
   geometry_msgs::PoseStamped pose_;
   urinal_cleaning_msgs::EstimatedWall estimated_wall_;
   nav_msgs::Path path_;
-  nav_msgs::Path path_sub_;
 
+  bool calc_start_point_called_ = false; // 清掃開始位置の計算が行われたかどうか
   int path_method_;
   float dx_;
   float tmp_start_point_x_;

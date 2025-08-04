@@ -12,8 +12,8 @@
   <node pkg="cleanup_path_planner" type="cleanup_path_planner_node" name="$(arg namespace)" output="screen">
     <param name="path_method" value="0"/>
     <param name="hz" value="10"/>
-    <param name="tmp_start_point_x" value="2"/>
-    <param name="tmp_start_point_y" value="1"/>
+    <param name="tmp_start_point_x" value="5"/>
+    <param name="tmp_start_point_y" value="5"/>
     <param name="dx" value="0.05"/>
     <param name="dist" value="2"/>
   </node>

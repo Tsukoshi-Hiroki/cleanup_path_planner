@@ -8,7 +8,6 @@ Panels:
         - /Status1
         - /Grid1
         - /PointCloud21
-        - /PointCloud21/Status1
         - /Axes1
         - /Pose1
       Splitter Ratio: 0.5
@@ -30,7 +29,7 @@ Panels:
   - Class: rviz/Time
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: PointCloud2
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -214,7 +213,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: base_link
+    Fixed Frame: map
     Frame Rate: 30
   Name: root
   Tools:
@@ -256,7 +255,7 @@ Visualization Manager:
       Near Clip Distance: 0.009999999776482582
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 2.3304014205932617
+      Yaw: 2.5704030990600586
     Saved: ~
 Window Geometry:
   Displays:

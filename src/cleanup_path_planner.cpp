@@ -4,19 +4,21 @@
 
 CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(tf_buffer_)
 {
+  // subscriber
   sub_pose_ = nh_.subscribe("/amcl_pose", 1, &CleanupPathPlanner::pose_callback, this, ros::TransportHints().reliable().tcpNoDelay());
   sub_estimated_wall_ = nh_.subscribe("/urinal_wall_estimator/estimated_wall", 1, &CleanupPathPlanner::estimated_wall_callback, this);
 
+  // publisher
   pub_path_ = nh_.advertise<nav_msgs::Path>("/wall_side_path", 1);
   pub_start_point_ = nh_.advertise<geometry_msgs::PoseStamped>("/wall_side_path_start_point", 1);
-  // pub_node_point_ = nh_.advertise<geometry_msgs::PointStamped>("/cleanup_node_point", 1);
 
   // service server
   approach_path_svr_ = nh_.advertiseService("/publish_approach_path", &CleanupPathPlanner::approach_path_check, this);
   urinal_cleaning_path_svr_ = nh_.advertiseService("/publish_urinal_cleaning_path", &CleanupPathPlanner::urinal_cleaning_path_check, this);
   stop_path_svr_ = nh_.advertiseService("/stop_publishing_path", &CleanupPathPlanner::stop_path_check, this);
+
   // service client
-  get_urinal_map_clt_ = nh_.serviceClient<urinal_cleaning_msgs::GetUrinalMap>("/get_urinal_map");
+  get_urinal_prox_clt_ = nh_.serviceClient<urinal_cleaning_msgs::GetUrinalProximity>("/get_urinal_proximity");
 
   // パラメータの読み込み
   nh_.getParam("path_method", path_method_);
@@ -25,17 +27,6 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   nh_.getParam("dx", dx_);
   nh_.getParam("tmp_start_point_x", tmp_start_point_x_);
   nh_.getParam("tmp_start_point_y", tmp_start_point_y_);
-
-  // 初期のpath_start_point_の設定
-  path_start_point_.header.frame_id = "map";
-  path_start_point_.header.stamp = ros::Time::now();
-  path_start_point_.pose.position.x = tmp_start_point_x_;
-  path_start_point_.pose.position.y = tmp_start_point_y_;
-  path_start_point_.pose.position.z = 0.0;
-  path_start_point_.pose.orientation.x = 0.0;
-  path_start_point_.pose.orientation.y = 0.0;
-  path_start_point_.pose.orientation.z = 0.0;
-  path_start_point_.pose.orientation.w = 1.0;
 }
 
 void CleanupPathPlanner::process()
@@ -67,15 +58,12 @@ void CleanupPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceSt
 bool CleanupPathPlanner::approach_path_check(urinal_cleaning_msgs::PublishApproachPath::Request& req, 
   urinal_cleaning_msgs::PublishApproachPath::Response& res)
 {
-  // アプローチパスの生成を行う
+  // アプローチパスの生成を行う指示を受ける
   ROS_INFO("Approach path check called");
   path_method_ = 1; // アプローチパスを生成する方法を指定
+  calc_start_point_called_ = true; // 清掃開始位置の計算を行わせる
   target_offset_x_ = req.target_offset_x;
   target_offset_y_ = req.target_offset_y;
-  
-  // 仮置き（offset そのまま座標にしちゃってる）
-  path_start_point_.pose.position.x = target_offset_x_;
-  path_start_point_.pose.position.y = target_offset_y_;
   
   printf("Target offset: x = %f, y = %f\n", target_offset_x_, target_offset_y_);
 
@@ -115,13 +103,17 @@ bool CleanupPathPlanner::stop_path_check(urinal_cleaning_msgs::StopPublishingPat
   return true;
 }
 
+// path の生成方法を決定する関数
 void CleanupPathPlanner::judge_path_method()
 {
-  // path の生成方法を決定するロジックをここに実装
   if(path_method_ == 1)
   {
-    // 壁際清掃の開始位置をパブリッシュ
-    pub_start_point_.publish(path_start_point_);
+    // 壁際清掃の開始位置を計算
+    if(calc_start_point_called_)
+    {
+      calc_start_point();
+    }
+    pub_start_point_.publish(path_start_point_); //見た目用
     // 壁に接近するアプローチパスを生成
     create_approach_path();
   }
@@ -136,11 +128,46 @@ void CleanupPathPlanner::judge_path_method()
     
   }else
   {
-    // Pathの座標をクリア
-    path_.poses.clear();
+    path_.poses.clear(); // 初期化
+    path_start_point_ = geometry_msgs::PoseStamped(); // 初期化
+    pub_path_.publish(path_);
+
     ROS_INFO("No path generation method selected, skipping path creation.");
   }
 
+}
+
+// 清掃開始位置の計算
+void CleanupPathPlanner::calc_start_point()
+{
+  urinal_cleaning_msgs::GetUrinalProximity get_urinal_prox_srv;
+  bool is_get_urinal_prox = false;
+  is_get_urinal_prox = get_urinal_prox_clt_.call(get_urinal_prox_srv);
+
+  if(!is_get_urinal_prox) {
+    ROS_ERROR("Failed to call service get_urinal_proximity");
+    return;
+  }
+  else {
+    ROS_INFO("Successfully called service get_urinal_proximity");
+    urinal_cleaning_msgs::UrinalProximity urinal_proximity = get_urinal_prox_srv.response.urinal_proximity;
+
+    // 取得した urinal_proximity から path_start_point_ の座標を設定
+    path_start_point_.header.frame_id = "map";
+    path_start_point_.header.stamp = ros::Time::now();
+    path_start_point_.pose.position.x = urinal_proximity.urinal_info.position.pose.position.x + target_offset_x_;
+    path_start_point_.pose.position.y = urinal_proximity.urinal_info.position.pose.position.y + target_offset_y_;
+    path_start_point_.pose.position.z = 0.0; // z座標は0に設定
+    path_start_point_.pose.orientation.x = 0.0;
+    path_start_point_.pose.orientation.y = 0.0;
+    path_start_point_.pose.orientation.z = 0.0;
+    path_start_point_.pose.orientation.w = 1.0; // 単位クォータニオン
+    
+    ROS_INFO_STREAM("Start point from urinal map: x = " << path_start_point_.pose.position.x 
+                    << ", y = " << path_start_point_.pose.position.y);
+
+    calc_start_point_called_ = false; // 清掃開始位置の計算が行われたので，次のspinで行われないように Flag を立てる
+  }
 }
 
 float CleanupPathPlanner::calc_inclination()
@@ -262,10 +289,7 @@ bool CleanupPathPlanner::side_judge()
 void CleanupPathPlanner::create_path()
 {
   pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
-  ROS_INFO("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   pcl::fromROSMsg(estimated_wall_.wall_points, pcl_cloud);  // ←ここで変換
-
-  ROS_INFO("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
   path_.poses.clear();
   path_.header.frame_id = "map"; // base_link座標系に変更
