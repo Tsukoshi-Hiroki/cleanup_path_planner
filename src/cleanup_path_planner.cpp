@@ -6,6 +6,7 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   // subscriber
   sub_pose_ = nh_.subscribe("/amcl_pose", 1, &CleanupPathPlanner::pose_callback, this, ros::TransportHints().reliable().tcpNoDelay());
   sub_estimated_wall_ = nh_.subscribe("/urinal_wall_estimator/estimated_wall", 1, &CleanupPathPlanner::estimated_wall_callback, this);
+  sub_edge_ = nh_.subscribe("/brushee_navigation_manager/marker/edge", 1, &CleanupPathPlanner::edge_callback, this);
 
   // publisher
   pub_path_ = nh_.advertise<nav_msgs::Path>("/wall_side_path", 1);
@@ -14,6 +15,7 @@ CleanupPathPlanner::CleanupPathPlanner() : nh_("~"), tf_buffer_(), tf_listener_(
   // service server
   approach_path_svr_ = nh_.advertiseService("/publish_approach_path", &CleanupPathPlanner::approach_path_check, this);
   urinal_cleaning_path_svr_ = nh_.advertiseService("/publish_urinal_cleaning_path", &CleanupPathPlanner::urinal_cleaning_path_check, this);
+  return_path_svr_ = nh_.advertiseService("/publish_return_path", &CleanupPathPlanner::return_path_check, this);
   stop_path_svr_ = nh_.advertiseService("/stop_publishing_path", &CleanupPathPlanner::stop_path_check, this);
 
   // service client
@@ -52,6 +54,11 @@ void CleanupPathPlanner::pose_callback(const geometry_msgs::PoseWithCovarianceSt
   ROS_INFO_STREAM("pose_ x: " << pose_.pose.position.x << ", y: " << pose_.pose.position.y << ", z: " << pose_.pose.position.z);
 }
 
+void CleanupPathPlanner::edge_callback(const visualization_msgs::Marker::ConstPtr& msg)
+{
+  current_edge_ = *msg;
+  ROS_INFO("Received edge marker with %zu points", current_edge_.points.size());
+}
 
 bool CleanupPathPlanner::approach_path_check(urinal_cleaning_msgs::PublishApproachPath::Request& req, 
   urinal_cleaning_msgs::PublishApproachPath::Response& res)
@@ -85,6 +92,18 @@ bool CleanupPathPlanner::urinal_cleaning_path_check(urinal_cleaning_msgs::Publis
   // レスポンスの設定
   res.success = true;
   
+  return true;
+}
+
+bool CleanupPathPlanner::return_path_check(urinal_cleaning_msgs::PublishReturnPath::Request& req,
+   urinal_cleaning_msgs::PublishReturnPath::Response& res)
+{
+  // 通常清掃 Path への復帰用 Pathの生成を行う指示を受ける
+  ROS_INFO("Return path check called");
+  path_method_ = 3; // 通常清掃 Path への復帰用 Pathを生成する方法を指定
+  calc_return_point_called_ = true; // 通常清掃 Path への復帰位置の計算を行わせる
+  // レスポンスの設定
+  res.success = true;
   return true;
 }
 
@@ -123,7 +142,11 @@ void CleanupPathPlanner::judge_path_method()
   else if(path_method_ == 3)
   {
     // 通常清掃 Path への復帰用 Pathを生成
-    
+    if(calc_return_point_called_)
+    {
+      create_return_path();
+    }
+
   }else
   {
     path_.poses.clear(); // 初期化
@@ -348,4 +371,105 @@ void CleanupPathPlanner::create_path()
 
   // Pathの座標系をbase_linkに変換してパブリッシュ
   path_tf_transformer();
+}
+
+void CleanupPathPlanner::create_return_path()
+{
+  // 通常清掃 Path への復帰用 Pathを生成
+  // calc edge straight line
+  double start_x = current_edge_.points.front().x;
+  double start_y = current_edge_.points.front().y;
+  double end_x = current_edge_.points.back().x;
+  double end_y = current_edge_.points.back().y;
+  
+  // inclination
+  double a = (end_y - start_y) / (end_x - start_x);
+  double vertical_a = -1.0 / a;
+
+  // section
+  double b = start_y - a * start_x;
+  double vertical_b = pose_.pose.position.y - vertical_a * pose_.pose.position.x;
+
+  // calc return point
+  double return_x = (vertical_b - b) / (a - vertical_a);
+  double return_y = a * return_x + b;
+  double return_z = 0.0;
+
+  // create path
+  path_.poses.clear();
+  path_.header.frame_id = "map"; // base_link座標系に変更
+  path_.header.stamp = pose_.header.stamp;
+
+  // 自己位置を初期値に設定
+  path_.poses.push_back(pose_);
+
+  if(pose_.pose.position.x < return_x) {
+    // ロボットが左側にいる場合
+    for(int i=1; (pose_.pose.position.x + dx_*i) < return_x; ++i)
+    {
+      geometry_msgs::PoseStamped pose;
+      pose.header.frame_id = "map";
+      pose.header.stamp = ros::Time::now();
+      pose.pose.position.x = path_.poses.back().pose.position.x + dx_;
+      pose.pose.position.y = path_.poses.back().pose.position.y + vertical_a * dx_; // 傾きに基づいてy座標を調整
+      pose.pose.position.z = 0.0;
+      pose.pose.orientation.w = 1.0; // Set orientation to identity
+      pose.pose.orientation.x = dx_;
+      pose.pose.orientation.y = vertical_a * dx_;
+      pose.pose.orientation.z = 0.0;
+
+      path_.poses.push_back(pose);
+    }
+    // path の最後の座標をreturn pointに設定
+    geometry_msgs::PoseStamped return_point;
+    return_point.header.frame_id = "map";
+    return_point.header.stamp = ros::Time::now();
+    return_point.pose.position.x = return_x;
+    return_point.pose.position.y = return_y;
+    return_point.pose.position.z = return_z;
+    return_point.pose.orientation.w = 1.0; // Set orientation to identity
+    return_point.pose.orientation.x = 0.0;
+    return_point.pose.orientation.y = 0.0;
+    return_point.pose.orientation.z = 0.0;
+
+    path_.poses.push_back(return_point);
+
+    // Pathの座標系をbase_linkに変換してパブリッシュ
+    path_tf_transformer();
+    calc_return_point_called_ = false; // 通常清掃 Path への復帰位置の計算が行われたので，次のspinで行われないように Flag を立てる
+
+  } else {
+    // ロボットが左側にいる場合
+    for(int i=1; (pose_.pose.position.x - dx_*i) > return_x; ++i)
+    {
+      geometry_msgs::PoseStamped pose;
+      pose.header.frame_id = "map";
+      pose.header.stamp = ros::Time::now();
+      pose.pose.position.x = path_.poses.back().pose.position.x - dx_;
+      pose.pose.position.y = path_.poses.back().pose.position.y - vertical_a * dx_; // 傾きに基づいてy座標を調整
+      pose.pose.position.z = 0.0;
+      pose.pose.orientation.w = 1.0; // Set orientation to identity
+      pose.pose.orientation.x = 0.0;
+      pose.pose.orientation.y = 0.0;
+      pose.pose.orientation.z = 0.0;
+      path_.poses.push_back(pose);
+    }
+    // path の最後の座標をreturn pointに設定
+    geometry_msgs::PoseStamped return_point;
+    return_point.header.frame_id = "map";
+    return_point.header.stamp = ros::Time::now();
+    return_point.pose.position.x = return_x;
+    return_point.pose.position.y = return_y;
+    return_point.pose.position.z = return_z;
+    return_point.pose.orientation.w = 1.0; // Set orientation to identity
+    return_point.pose.orientation.x = 0.0;
+    return_point.pose.orientation.y = 0.0;
+    return_point.pose.orientation.z = 0.0;  
+
+    path_.poses.push_back(return_point);
+
+    // Pathの座標系をbase_linkに変換してパブリッシュ
+    path_tf_transformer();
+    calc_return_point_called_ = false; // 通常清掃 Path への復帰位置の計算が行われたので，次のspinで行われないように Flag を立てる
+  }
 }

@@ -209,6 +209,30 @@ Visualization Manager:
       Topic: /wall_side_path_start_point
       Unreliable: false
       Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /brushee_navigation_manager/marker/node
+      Name: MarkerArray
+      Namespaces:
+        node: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /brushee_navigation_manager/marker/id
+      Name: MarkerArray
+      Namespaces:
+        id: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /brushee_navigation_manager/marker/edge
+      Name: Marker
+      Namespaces:
+        edge: true
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -237,7 +261,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 15.50295639038086
+      Distance: 11.328767776489258
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -245,9 +269,9 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.8362754583358765
-        Y: -1.075164794921875
-        Z: 0.13873444497585297
+        X: 5.276863098144531
+        Y: -0.2546243667602539
+        Z: 0.14187735319137573
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -255,7 +279,7 @@ Visualization Manager:
       Near Clip Distance: 0.009999999776482582
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
-      Yaw: 2.5704030990600586
+      Yaw: 2.9204039573669434
     Saved: ~
 Window Geometry:
   Displays:

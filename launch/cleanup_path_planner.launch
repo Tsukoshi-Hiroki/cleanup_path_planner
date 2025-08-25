@@ -8,6 +8,7 @@
   <arg name="rviz_conf" default="$(find cleanup_path_planner)/rviz/cleanup_path.rviz"/>
 
   <include file="$(arg brushee_reco_path)/launch/libra_without_camera.launch"/>
+  <include file="$(find brushee_navigation_manager)/launch/brushee_navigation_manager.launch"/>
 
   <node pkg="cleanup_path_planner" type="cleanup_path_planner_node" name="$(arg namespace)" output="screen">
     <param name="path_method" value="0"/>
